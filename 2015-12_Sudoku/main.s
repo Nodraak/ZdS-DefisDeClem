@@ -3,15 +3,11 @@
 global _start
 
 section .data
-    ; align 0x4
-    s_hello:        db ' - Hello, world!', 0xA, 0x0
-    s_hello_len:    equ $-s_hello
+    s_crlf      db 0xD, 0xA, 0x0
 
     SYS_EXIT:   equ 1
     SYS_WRITE:  equ 4
     STDOUT:     equ 1
-
-; section .bss
 
 
 section .text
@@ -19,20 +15,27 @@ section .text
 _start:
     pop eax     ; argv
     push eax
-    call print_int
+    ;call print_int
     add esp, 4
 
     pop ebx     ; argv
-    push 15
     push ebx
     call print_str
-    add esp, 8
+    add esp, 4
 
-    push s_hello_len
-    lea eax, [s_hello]
+    lea eax, [s_crlf]
     push eax
     call print_str
-    add esp, 8
+    add esp, 0x4
+
+    add ebx, 0x1
+    call print_str
+    add esp, 4
+
+    lea eax, [s_crlf]
+    push eax
+    call print_str
+    add esp, 0x4
 
     push 0
     call exit
@@ -42,17 +45,27 @@ _start:
 print_str:
 ; Prints a string to stdout
 ; Args:
-;   a string's address
-;   len
+;   a string's address, '\0' terminated
 
     push ebp
     mov ebp, esp
 
-    mov eax, SYS_WRITE
-    mov ebx, STDOUT
-    mov ecx, [ebp + 8]   ; string
-    mov edx, [ebp + 12]  ; len
-    int 0x80
+    mov ecx, [ebp + 8]
+
+    ; while *s != '\0', print one char
+    loop:
+        mov eax, [ecx]
+        cmp al, 0x0
+        je end
+
+        mov eax, SYS_WRITE
+        mov ebx, STDOUT
+        mov edx, 1
+        int 0x80
+
+        inc ecx
+        jmp loop
+    end:
 
     mov esp, ebp
     pop ebp

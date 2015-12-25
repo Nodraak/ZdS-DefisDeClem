@@ -8,6 +8,14 @@
 ; [ebp - 8]    - second local variable
 ; [ebp - 12]   - third local variable
 
+; todo
+; es, fs, gs
+; esi, edi
+; a accumulator
+; b base
+; c counter
+; d data
+
 [BITS 32]
 
 global _start
@@ -80,7 +88,6 @@ _start:
     call exit ; does not return
 
 
-
 ; Print argc and argv
 ; Arg
 ;   argc
@@ -97,13 +104,11 @@ print_args:
     call print_int
     add esp, 0x4
 
-    lea ebx, [s_space]
-    push ebx
+    push s_space
     call print_str
     add esp, 0x4
 
-    lea ebx, [s_arg]
-    push ebx
+    push s_arg
     call print_str
     add esp, 0x4
 
@@ -111,18 +116,9 @@ print_args:
     ; argv
     ;
 
-; todo
-; es, fs, gs
-; esi, edi
-; a accumulator
-; b base
-; c counter
-; d data
-
     ; eax argc
-    ; ebx garbage
     ; ecx counter
-    ; edx argv
+    ; edx strings (s_space, argv, ...)
 
     mov ecx, 0x0 ; counter
     .loop:
@@ -135,23 +131,19 @@ print_args:
         add esp, 0x4
 
         ; space
-        lea ebx, [s_space]
-        ; todo mov ebx, s_space ; equivalent ???
-        push ebx
+        push s_space
         call print_str
         add esp, 0x4
 
         ; argv
         mov edx, [argv]
         mov edx, [edx + 4*ecx]
-
         push edx
         call print_str
         add esp, 0x4
 
         ; \n
-        lea ebx, [s_crlf]
-        push ebx
+        push s_crlf
         call print_str
         add esp, 0x4
 

@@ -1,4 +1,5 @@
 
+; STACK
 ; [ebp + 16]    - third function parameter
 ; [ebp + 12]    - second function parameter
 ; [ebp + 8]     - first function parameter
@@ -8,33 +9,36 @@
 ; [ebp - 8]    - second local variable
 ; [ebp - 12]   - third local variable
 
-; todo
+; REGISTERS
 ; es, fs, gs
 ; esi, edi
-; a accumulator
-; b base
-; c counter
-; d data
+; eax accumulator
+; ebx base
+; ecx counter
+; edx data
+
 
 [BITS 32]
 
 global _start
 
+
 ;
 ; MACROS
 ;
 
-%macro pre_func 0
+%macro PRE_FUNC 0
     push ebp
     mov ebp, esp
     pushad
 %endmacro
 
-%macro post_func 0
+%macro POST_FUNC 0
     popad
     leave ; leave == mov esp, ebp + pop ebp
     ret
 %endmacro
+
 
 ;
 ; DATA
@@ -93,7 +97,7 @@ _start:
 ;   argc
 ;   argv
 print_args:
-    pre_func
+    PRE_FUNC
 
     ;
     ; argc
@@ -151,14 +155,14 @@ print_args:
         jmp .loop
     .end:
 
-    post_func
+    POST_FUNC
 
 
 ; Prints a string to stdout
 ; Args:
 ;   a string's address, '\0' terminated
 print_str:
-    pre_func
+    PRE_FUNC
 
     mov ecx, [ebp + 8]
 
@@ -177,14 +181,14 @@ print_str:
         jmp .loop
     .end:
 
-    post_func
+    POST_FUNC
 
 
 ; Prints a integer to stdout
 ; Args:
 ;   an integer
 print_int:
-    pre_func
+    PRE_FUNC
 
     ; convert int to str
     mov eax, [ebp + 8]
@@ -199,18 +203,18 @@ print_int:
 
     pop eax
 
-    post_func
+    POST_FUNC
 
 
 ; Quit the program
 ; Arg:
 ;   return value
 exit:
-    pre_func
+    PRE_FUNC
 
     mov eax, SYS_EXIT
     mov ebx, [ebp + 8] ; return value
     int 0x80
 
-    post_func
+    POST_FUNC
 

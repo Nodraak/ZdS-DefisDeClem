@@ -12,6 +12,25 @@
 
 global _start
 
+;
+; MACROS
+;
+
+%macro pre_func 0
+    push ebp
+    mov ebp, esp
+    pushad
+%endmacro
+
+%macro post_func 0
+    popad
+    leave ; leave == mov esp, ebp + pop ebp
+    ret
+%endmacro
+
+;
+; DATA
+;
 
 ; initialized variables - RW
 section .data
@@ -35,11 +54,15 @@ section .bss
     argv    resb 0x4
 
 
+;
+; CODE
+;
+
 ; code - RO
 section .text
 
 _start:
-    ; save arc and argv
+    ; save argc and argv
     mov eax, [esp]
     mov [argc], eax
     mov eax, [esp+4]
@@ -58,15 +81,12 @@ _start:
 
 
 
-print_args:
 ; Print argc and argv
 ; Arg
 ;   argc
 ;   argv
-
-    push ebp
-    mov ebp, esp
-    pushad
+print_args:
+    pre_func
 
     ;
     ; argc
@@ -106,9 +126,9 @@ print_args:
     ; edx argv
 
     mov ecx, 0x0 ; counter
-    s_loop:
+    .loop:
         cmp ecx, eax
-        jge s_end
+        jge .end
 
         ; counter
         push ecx
@@ -135,32 +155,25 @@ print_args:
         add esp, 0x4
 
         inc ecx
-        jmp s_loop
-    s_end:
+        jmp .loop
+    .end:
 
-    popad
-    mov esp, ebp
-    pop ebp
-    ;todo leave == mov + pop ??
-    ret
+    post_func
 
 
-print_str:
 ; Prints a string to stdout
 ; Args:
 ;   a string's address, '\0' terminated
-
-    push ebp
-    mov ebp, esp
-    pushad
+print_str:
+    pre_func
 
     mov ecx, [ebp + 8]
 
     ; while *s != '\0', print one char
-    ps_loop:
+    .loop:
         mov eax, [ecx]
         cmp al, 0x0
-        je ps_end
+        je .end
 
         mov eax, SYS_WRITE
         mov ebx, STDOUT
@@ -168,23 +181,17 @@ print_str:
         int 0x80
 
         inc ecx
-        jmp ps_loop
-    ps_end:
+        jmp .loop
+    .end:
 
-    popad
-    mov esp, ebp
-    pop ebp
-    ret
+    post_func
 
 
-print_int:
 ; Prints a integer to stdout
 ; Args:
 ;   an integer
-
-    push ebp
-    mov ebp, esp
-    pushad
+print_int:
+    pre_func
 
     ; convert int to str
     mov eax, [ebp + 8]
@@ -199,24 +206,18 @@ print_int:
 
     pop eax
 
-    popad
-    mov esp, ebp
-    pop ebp
-    ret
+    post_func
 
 
-exit:
 ; Quit the program
 ; Arg:
 ;   return value
-
-    push ebp
-    mov ebp, esp
+exit:
+    pre_func
 
     mov eax, SYS_EXIT
     mov ebx, [ebp + 8] ; return value
     int 0x80
 
-    mov esp, ebp
-    pop ebp
-    ret
+    post_func
+

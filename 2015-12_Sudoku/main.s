@@ -16,23 +16,63 @@ section .data
     s_crlf      db 0xD, 0xA, 0x0
     s_space     db ' ', 0x0
     s_arg       db 'arguments:', 0xD, 0xA, 0x0
+    grille      times 81 db 0x0
 
-    SYS_EXIT:   equ 1
-    SYS_WRITE:  equ 4
-    STDOUT:     equ 1
+    SYS_EXIT    equ 1
+    SYS_WRITE   equ 4
+    STDOUT      equ 1
+
+
+section .bss
+    argc    resb 0x4
+    argv    resb 0x4
 
 
 section .text
 
 _start:
-    ; argc [esp]
-    ; argv [esp+4]
+    mov ebp, esp
+
+    ;mov eax, [ebp]
+    ;mov [argc], eax
+    ;mov [argv], [esp + 4]
+
+    ;mov eax, [ebp]
+    ;push eax
+
+    mov eax, [ebp]
+    mov [argc], eax
+
+    mov eax, [argc]
+    ;push eax
+
+    mov eax, [ebp+4]
+    push eax
+    call print_args
+    add esp, 0x8
+
+    push 0
+    call exit
+    add esp, 0x4
+
+    mov esp, ebp
+
+
+print_args:
+; Print argc and argv
+; Arg
+;   argc
+;   argv
+
+    push ebp
+    mov ebp, esp
+    pushad
 
     ;
     ; argc
     ;
 
-    mov eax, [esp] ; get argc
+    mov eax, [ebp+12] ; get argc
 
     push eax
     call print_int
@@ -52,6 +92,14 @@ _start:
     ; argv
     ;
 
+; todo
+; es, fs, gs
+; esi, edi
+; a accumulator
+; b base
+; c counter
+; d data
+
     ; eax argc
     ; ebx garbage
     ; ecx counter
@@ -69,12 +117,13 @@ _start:
 
         ; space
         lea ebx, [s_space]
+        ; todo mov ebx, s_space ; equivalent ???
         push ebx
         call print_str
         add esp, 0x4
 
         ; argv
-        mov edx, [esp + 4 + 4*ecx] ; get argv
+        mov edx, [ebp+16 + 4*ecx] ; get argv
         push edx
         call print_str
         add esp, 0x4
@@ -86,13 +135,14 @@ _start:
         add esp, 0x4
 
         inc ecx
-        inc edx
         jmp s_loop
     s_end:
 
-    push 0
-    call exit
-    add esp, 4
+    popad
+    mov esp, ebp
+    pop ebp
+    ;todo leave == mov + pop ??
+    ret
 
 
 print_str:

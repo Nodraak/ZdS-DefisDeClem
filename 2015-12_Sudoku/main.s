@@ -12,50 +12,50 @@
 
 global _start
 
+
+; initialized variables - RW
 section .data
-    s_crlf      db 0xD, 0xA, 0x0
-    s_space     db ' ', 0x0
-    s_arg       db 'arguments:', 0xD, 0xA, 0x0
     grille      times 81 db 0x0
 
+
+; ro initialized variables - RO
+section .rodata
     SYS_EXIT    equ 1
     SYS_WRITE   equ 4
     STDOUT      equ 1
 
+    s_crlf      db 0xD, 0xA, 0x0
+    s_space     db ' ', 0x0
+    s_arg       db 'arguments:', 0xD, 0xA, 0x0
 
+
+; uninitialized variables - RW
 section .bss
     argc    resb 0x4
     argv    resb 0x4
 
 
+; code - RO
 section .text
 
 _start:
-    mov ebp, esp
-
-    ;mov eax, [ebp]
-    ;mov [argc], eax
-    ;mov [argv], [esp + 4]
-
-    ;mov eax, [ebp]
-    ;push eax
-
-    mov eax, [ebp]
+    ; save arc and argv
+    mov eax, [esp]
     mov [argc], eax
+    mov eax, [esp+4]
+    mov [argv], eax
 
+    ; push argc and argv (from right to left - reverse order) to print them
+    mov eax, [argv]
+    push eax
     mov eax, [argc]
-    ;push eax
-
-    mov eax, [ebp+4]
     push eax
     call print_args
     add esp, 0x8
 
     push 0
-    call exit
-    add esp, 0x4
+    call exit ; does not return
 
-    mov esp, ebp
 
 
 print_args:
@@ -72,7 +72,7 @@ print_args:
     ; argc
     ;
 
-    mov eax, [ebp+12] ; get argc
+    mov eax, [ebp+8] ; get argc
 
     push eax
     call print_int
@@ -123,7 +123,7 @@ print_args:
         add esp, 0x4
 
         ; argv
-        mov edx, [ebp+16 + 4*ecx] ; get argv
+        mov edx, [ebp+12 + 4*ecx] ; get argv
         push edx
         call print_str
         add esp, 0x4

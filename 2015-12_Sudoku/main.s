@@ -65,7 +65,7 @@ _start:
     ; save argc and argv
     mov eax, [esp]
     mov [argc], eax
-    mov eax, [esp+4]
+    lea eax, [esp+4]
     mov [argv], eax
 
     ; push argc and argv (from right to left - reverse order) to print them
@@ -92,8 +92,7 @@ print_args:
     ; argc
     ;
 
-    mov eax, [ebp+8] ; get argc
-
+    mov eax, [argc]
     push eax
     call print_int
     add esp, 0x4
@@ -143,7 +142,9 @@ print_args:
         add esp, 0x4
 
         ; argv
-        mov edx, [ebp+12 + 4*ecx] ; get argv
+        mov edx, [argv]
+        mov edx, [edx + 4*ecx]
+
         push edx
         call print_str
         add esp, 0x4

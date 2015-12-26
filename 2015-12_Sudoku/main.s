@@ -39,6 +39,23 @@ global _start
     ret
 %endmacro
 
+%macro print_int_dec 1
+    push 10
+    push %1
+    call print_int
+    add esp, 0x8
+%endmacro
+
+%macro print_int_hex 1
+    push s_hex
+    call print_str
+    add esp, 0x4
+
+    push 16
+    push %1
+    call print_int
+    add esp, 0x8
+%endmacro
 
 ;
 ; DATA
@@ -58,6 +75,7 @@ section .rodata
     s_crlf      db 0xD, 0xA, 0x0
     s_space     db ' ', 0x0
     s_arg       db 'arguments:', 0xD, 0xA, 0x0
+    s_hex       db '0x'
 
 
 ; uninitialized variables - RW
@@ -104,9 +122,7 @@ print_args:
     ;
 
     mov eax, [argc]
-    push eax
-    call print_int
-    add esp, 0x4
+    print_int_dec eax
 
     push s_space
     call print_str
@@ -130,9 +146,7 @@ print_args:
         jge .end
 
         ; counter
-        push ecx
-        call print_int
-        add esp, 0x4
+        print_int_dec ecx
 
         ; space
         push s_space
@@ -186,13 +200,45 @@ print_str:
 
 ; Prints a integer to stdout
 ; Args:
-;   an integer
+;   an integer (ex: 42)
+;   a base (ex: 10 or 16)
 print_int:
     PRE_FUNC
 
-    ; convert int to str
+    ; load arg
     mov eax, [ebp + 8]
-    add eax, 0x30 ; 0x30 == '0'
+    mov ebx, [ebp + 12] ; base
+    mov edx, 0
+
+    ; if n > 10
+    ;     push n/10
+    ;     recursive call
+    cmp eax, ebx
+    jl .format_number
+    div ebx ; div arg == edx:eax / arg ; quotient in eax, remainder in edx
+
+    push ebx
+    push eax
+    call print_int
+    add esp, 0x8
+
+    ; move remainder in eax, to be printed
+    mov eax, edx
+
+    .format_number:
+
+    ; convert int to str
+    cmp eax, 10
+    jl .convert_dec
+    jge .convert_hex
+    .convert_dec:
+    add eax, 0x31-0x1-0x0 ; 0x31 == '1'
+    jmp .print
+    .convert_hex:
+    add eax, 0x41-0x1-0xA ; 0x41 == 'A'
+    jmp .print
+
+    .print:
     push eax
 
     mov eax, SYS_WRITE

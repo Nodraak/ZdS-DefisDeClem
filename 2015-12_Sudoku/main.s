@@ -63,7 +63,7 @@ global _start
 
 ; initialized variables - RW
 section .data
-    grille      times 81 db 0x0
+    grid        times 81 db 0x0
 
 
 ; ro initialized variables - RO
@@ -75,7 +75,8 @@ section .rodata
     s_crlf      db 0xD, 0xA, 0x0
     s_space     db ' ', 0x0
     s_arg       db 'arguments:', 0xD, 0xA, 0x0
-    s_hex       db '0x'
+    s_hex       db '0x', 0x0
+    s_3dash     db '---', 0xD, 0xA, 0x0
 
 
 ; uninitialized variables - RW
@@ -105,6 +106,8 @@ _start:
     push eax
     call print_args
     add esp, 0x8
+
+    call print_grid
 
     push 0
     call exit ; does not return
@@ -168,6 +171,69 @@ print_args:
         inc ecx
         jmp .loop
     .end:
+
+    POST_FUNC
+
+
+; Prints the sudoku grid
+print_grid:
+    PRE_FUNC
+
+    push s_3dash
+    call print_str
+    add esp, 0x4
+
+    mov eax, 0
+    .loop_1:
+        cmp eax, 9
+        je .end_1
+
+        mov ebx, 0
+        .loop_2:
+            cmp ebx, 9
+            je .end_2
+
+            ; compute index
+            mov ecx, 0
+            times 9 add ecx, eax
+            add ecx, ebx
+
+            mov edx, [grid + ecx]
+
+            ; print the digit
+            cmp edx, 0
+            je .print_empty
+            jne .print_digit
+
+            .print_empty:
+            push s_space
+            call print_str
+            add esp, 0x4
+            jmp .print_end
+
+            .print_digit:
+            print_int_dec edx
+            jmp .print_end
+
+            ; inc and loop
+            .print_end:
+            inc ebx
+            jmp .loop_2
+
+        .end_2:
+
+        push s_crlf
+        call print_str
+        add esp, 0x4
+
+        inc eax
+        jmp .loop_1
+
+    .end_1:
+
+    push s_3dash
+    call print_str
+    add esp, 0x4
 
     POST_FUNC
 

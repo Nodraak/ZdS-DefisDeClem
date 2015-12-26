@@ -63,7 +63,7 @@ global _start
 
 ; initialized variables - RW
 section .data
-    grid        times 81 db 0x0
+    grid        times 81 dd 0x0
 
 
 ; ro initialized variables - RO
@@ -77,6 +77,8 @@ section .rodata
     s_arg       db 'arguments:', 0xD, 0xA, 0x0
     s_hex       db '0x', 0x0
     s_3dash     db '---', 0xD, 0xA, 0x0
+    s_error_count db 'Error, expected 2 args', 0xD, 0xA, 0x0
+    s_sep       db '.', 0x0
 
 
 ; uninitialized variables - RW
@@ -99,14 +101,8 @@ _start:
     lea eax, [esp+4]
     mov [argv], eax
 
-    ; push argc and argv (from right to left - reverse order) to print them
-    mov eax, [argv]
-    push eax
-    mov eax, [argc]
-    push eax
     call print_args
-    add esp, 0x8
-
+    call parse_argv
     call print_grid
 
     push 0
@@ -114,9 +110,6 @@ _start:
 
 
 ; Print argc and argv
-; Arg
-;   argc
-;   argv
 print_args:
     PRE_FUNC
 
@@ -175,6 +168,39 @@ print_args:
     POST_FUNC
 
 
+; Parse argv[1] and store it in grid
+parse_argv:
+    PRE_FUNC
+
+    mov eax, [argc]
+    cmp eax, 2
+    jne .error_count
+
+    mov ecx, 0
+    .loop:
+        cmp ecx, 81
+        jge .end
+
+        mov edx, [argv]
+        mov edx, [edx + 4]
+        mov al, [edx + ecx]
+
+        sub eax, 0x30 ; convert char to int - 0x30 == '0'
+        mov [grid + 4*ecx], eax
+
+        inc ecx
+        jmp .loop
+
+    .error_count:
+    push s_error_count
+    call print_str
+    add esp, 0x4
+    jmp .end
+
+    .end:
+    POST_FUNC
+
+
 ; Prints the sudoku grid
 print_grid:
     PRE_FUNC
@@ -198,7 +224,7 @@ print_grid:
             times 9 add ecx, eax
             add ecx, ebx
 
-            mov edx, [grid + ecx]
+            mov edx, [grid + 4*ecx]
 
             ; print the digit
             cmp edx, 0

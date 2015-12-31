@@ -70,6 +70,18 @@ global _start
     add esp, 0x4
 %endmacro
 
+
+; Get a cell of the grid
+; Args: y, x coordinates
+; Returns value in eax
+%macro get_cell_at 2
+    mov eax, %1
+    imul eax, 9
+    add eax, %2
+    mov eax, [grid + 4*eax]
+%endmacro
+
+
 ;
 ; DATA
 ;
@@ -218,15 +230,11 @@ print_grid:
             cmp DWORD [ebp-8], 9
             je .end_2
 
-            ; compute index
-            mov ecx, 0
-            times 9 add ecx, [ebp-4]
-            add ecx, [ebp-8]
+            ; get cell value
+            get_cell_at DWORD [ebp-4], DWORD [ebp-8]
 
-            mov edx, [grid + 4*ecx]
-
-            ; print the digit
-            cmp edx, 0
+            ; print the digit or a space if cell is empty
+            cmp eax, 0
             je .print_empty
             jne .print_digit
 
@@ -237,7 +245,7 @@ print_grid:
             jmp .print_end
 
             .print_digit:
-            print_int_dec edx
+            print_int_dec eax
             jmp .print_end
 
             ; inc and loop

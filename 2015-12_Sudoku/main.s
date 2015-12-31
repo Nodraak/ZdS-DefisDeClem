@@ -18,7 +18,7 @@
 ; edx data
 
 
-[BITS 32]
+bits 32
 
 global _start
 
@@ -30,11 +30,14 @@ global _start
 %macro PRE_FUNC 0
     push ebp
     mov ebp, esp
-    pushad
 %endmacro
 
-%macro POST_FUNC 0
-    popad
+%macro POST_FUNC 0-1
+    ; if we have an argument, mov it to eax as return code
+    %if %0 == 1
+        mov eax, %1
+    %endif
+
     leave ; leave == mov esp, ebp + pop ebp
     ret
 %endmacro
@@ -57,6 +60,16 @@ global _start
     add esp, 0x8
 %endmacro
 
+%macro print_str_crlf 1
+    push %1
+    call print_str
+    add esp, 0x4
+
+    push s_crlf
+    call print_str
+    add esp, 0x4
+%endmacro
+
 ;
 ; DATA
 ;
@@ -72,13 +85,13 @@ section .rodata
     SYS_WRITE   equ 4
     STDOUT      equ 1
 
-    s_crlf      db 0xD, 0xA, 0x0
-    s_space     db ' ', 0x0
-    s_arg       db 'arguments:', 0xD, 0xA, 0x0
-    s_hex       db '0x', 0x0
-    s_3dash     db '---', 0xD, 0xA, 0x0
-    s_error_count db 'Error, expected 2 args', 0xD, 0xA, 0x0
-    s_sep       db '.', 0x0
+    s_3dashes       db '---', 0x0
+    s_arg           db ' arguments:', 0x0
+    s_crlf          db 0xD, 0xA, 0x0
+    s_error_count   db 'Error, expected 2 args', 0x0
+    s_hex           db '0x', 0x0
+    s_sep           db '.', 0x0
+    s_space         db ' ', 0x0
 
 
 ; uninitialized variables - RW
@@ -113,36 +126,28 @@ _start:
 print_args:
     PRE_FUNC
 
-    ;
-    ; argc
-    ;
-
-    mov eax, [argc]
-    print_int_dec eax
-
-    push s_space
-    call print_str
-    add esp, 0x4
-
-    push s_arg
-    call print_str
-    add esp, 0x4
+    ; [ebp-4] counter
+    sub esp, 0x4
+    mov DWORD [ebp-4], 0
 
     ;
-    ; argv
+    ; print argc
     ;
 
-    ; eax argc
-    ; ecx counter
-    ; edx strings (s_space, argv, ...)
+    print_int_dec DWORD [argc]
+    print_str_crlf s_arg
 
-    mov ecx, 0x0 ; counter
+    ;
+    ; print every argv
+    ;
+
     .loop:
-        cmp ecx, eax
+        mov eax, [ebp-4]
+        cmp eax, [argc]
         jge .end
 
         ; counter
-        print_int_dec ecx
+        print_int_dec DWORD [ebp-4]
 
         ; space
         push s_space
@@ -150,18 +155,12 @@ print_args:
         add esp, 0x4
 
         ; argv
-        mov edx, [argv]
-        mov edx, [edx + 4*ecx]
-        push edx
-        call print_str
-        add esp, 0x4
+        mov ecx, [ebp-4]
+        mov ebx, [argv]
+        mov edx, [ebx + 4*ecx]
+        print_str_crlf edx
 
-        ; \n
-        push s_crlf
-        call print_str
-        add esp, 0x4
-
-        inc ecx
+        inc DWORD [ebp-4]
         jmp .loop
     .end:
 
@@ -172,8 +171,7 @@ print_args:
 parse_argv:
     PRE_FUNC
 
-    mov eax, [argc]
-    cmp eax, 2
+    cmp DWORD [argc], 2
     jne .error_count
 
     mov ecx, 0
@@ -192,9 +190,7 @@ parse_argv:
         jmp .loop
 
     .error_count:
-    push s_error_count
-    call print_str
-    add esp, 0x4
+    print_str_crlf s_error_count
     jmp .end
 
     .end:
@@ -205,24 +201,27 @@ parse_argv:
 print_grid:
     PRE_FUNC
 
-    push s_3dash
-    call print_str
-    add esp, 0x4
+    ; [ebp-4] first level counter (rows)
+    ; [ebp-8] second level counter (columns)
+    sub esp, 0x8
+    mov DWORD [ebp-4], 0
+    mov DWORD [ebp-8], 0
 
-    mov eax, 0
+    print_str_crlf s_3dashes
+
     .loop_1:
-        cmp eax, 9
+        cmp DWORD [ebp-4], 9
         je .end_1
 
-        mov ebx, 0
+        mov DWORD [ebp-8], 0
         .loop_2:
-            cmp ebx, 9
+            cmp DWORD [ebp-8], 9
             je .end_2
 
             ; compute index
             mov ecx, 0
-            times 9 add ecx, eax
-            add ecx, ebx
+            times 9 add ecx, [ebp-4]
+            add ecx, [ebp-8]
 
             mov edx, [grid + 4*ecx]
 
@@ -243,7 +242,7 @@ print_grid:
 
             ; inc and loop
             .print_end:
-            inc ebx
+            inc DWORD [ebp-8]
             jmp .loop_2
 
         .end_2:
@@ -252,14 +251,12 @@ print_grid:
         call print_str
         add esp, 0x4
 
-        inc eax
+        inc DWORD [ebp-4]
         jmp .loop_1
 
     .end_1:
 
-    push s_3dash
-    call print_str
-    add esp, 0x4
+    print_str_crlf s_3dashes
 
     POST_FUNC
 
@@ -274,8 +271,7 @@ print_str:
 
     ; while *s != '\0', print one char
     .loop:
-        mov eax, [ecx]
-        cmp al, 0x0
+        cmp BYTE [ecx], 0
         je .end
 
         mov eax, SYS_WRITE

@@ -71,6 +71,29 @@ global _start
 %endmacro
 
 
+; Return if a condition if true
+; Args:
+;   an int
+;   another int
+;   a conditional jmp: jne, jl, jge, ...
+;   a return value (optional)
+; If the conditional jmp is true, the function returns
+; (with the optional retrun value in eax if specified)
+%macro ret_if_true 3-4
+    cmp %1, %2
+    %3 %%ret
+    jmp %%skip
+
+    %%ret:
+        %if %0 == 3
+            POST_FUNC
+        %else
+            POST_FUNC %4
+        %endif
+    %%skip:
+%endmacro
+
+
 ; Get a cell of the grid
 ; Args: y, x coordinates
 ; Returns value in eax
@@ -129,6 +152,12 @@ _start:
     call print_args
     call parse_argv
     call print_grid
+    call grid_is_valid
+
+    print_int_dec eax
+    push s_crlf
+    call print_str
+    add esp, 0x4
 
     push 0
     call exit ; does not return
@@ -267,6 +296,81 @@ print_grid:
     print_str_crlf s_3dashes
 
     POST_FUNC
+
+
+; Returns in eax 1 if the row is valid, 0 otherwise
+; Arg:
+;   A row id
+; For n from 1 to 9, we iterate over the whole row to count the number of
+; occurence of the current n in the row
+grid_check_row:
+    PRE_FUNC
+
+    ; [ebp-4] column counter
+    ; [ebp-8] number (n) counter
+    ; [ebp-12] occurence counter
+    sub esp, 12
+
+    ; loop every n
+    mov DWORD [ebp-8], 1
+    .loop_n:
+        cmp DWORD [ebp-8], 10
+        jge .end_n
+
+        ; loop every columns and count occurences of n
+        mov DWORD [ebp-4], 0
+        mov DWORD [ebp-12], 0
+        .loop_c:
+            cmp DWORD [ebp-4], 9
+            jge .end_c
+
+            get_cell_at DWORD [ebp+8], DWORD [ebp-4] ; row id, column id
+            ; if equal, inc counter
+            cmp eax, [ebp-8]
+            jne .skip
+            inc DWORD [ebp-12]
+            .skip:
+
+            inc DWORD [ebp-4]
+            jmp .loop_c
+        .end_c:
+
+        ret_if_true DWORD [ebp-12], 2, jge, 0
+
+        inc DWORD [ebp-8]
+        jmp .loop_n
+    .end_n:
+
+    POST_FUNC 1
+
+
+; Returns in eax 1 if the grid is valid, 0 otherwise
+grid_is_valid:
+    PRE_FUNC
+
+    ; [ebp-4] counter
+    sub esp, 0x4
+
+    ;
+    ; check each row
+    ;
+
+    mov DWORD [ebp-4], 0
+    .loop:
+        cmp DWORD [ebp-4], 10
+        jge .end
+
+        push DWORD [ebp-4]
+        call grid_check_row
+        add esp, 0x4
+
+        ret_if_true eax, 0, je, 0
+
+        inc DWORD [ebp-4]
+        jmp .loop
+    .end:
+
+    POST_FUNC 1
 
 
 ; Prints a string to stdout

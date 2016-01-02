@@ -123,7 +123,7 @@ section .rodata
     s_3dashes       db '---', 0x0
     s_arg           db ' arguments:', 0x0
     s_crlf          db 0xD, 0xA, 0x0
-    s_error_count   db 'Error, expected 2 args', 0x0
+    s_error_count   db 'Error, expected 10 args', 0x0
     s_hex           db '0x', 0x0
     s_sep           db '.', 0x0
     s_space         db ' ', 0x0
@@ -212,23 +212,55 @@ print_args:
 parse_argv:
     PRE_FUNC
 
-    cmp DWORD [argc], 2
+    cmp DWORD [argc], 10
     jne .error_count
 
-    mov ecx, 0
-    .loop:
-        cmp ecx, 81
+    ; eax: tmp data
+    ; ebx: argv array index
+    ; ecx: string index
+    ; edx: tmp data: current digit
+
+    mov ebx, 0+1 ; skip argv[0]
+    .loop_1:
+        cmp ebx, 9+1
         jge .end
 
-        mov edx, [argv]
-        mov edx, [edx + 4]
-        mov al, [edx + ecx]
+        mov ecx, 0
+        .loop_2:
+            cmp ecx, 9
+            jge .end_2
 
-        sub eax, 0x30 ; convert char to int - 0x30 == '0'
-        mov [grid + 4*ecx], eax
+            ; get the current char
+            mov eax, [argv]
+            mov eax, [eax + 4*ebx]
+            mov dl, [eax + ecx]
+            ; convert to int
+            cmp edx, 0x2E ; 0x2E == '.'
+            jne .convert_digit
+            je .convert_empty
+            .convert_empty:
+            mov edx, 0
+            jmp .save
+            .convert_digit:
+            sub edx, 0x30 ; convert char to int - 0x30 == '0'
+            jmp .save
+            .save:
 
-        inc ecx
-        jmp .loop
+            ; save it (edx is index)
+            mov eax, ebx
+            dec eax ; hack because skip argv[0]
+            imul eax, 9
+            add eax, ecx
+
+            mov [grid + 4*eax], edx
+
+            inc ecx
+            jmp .loop_2
+
+        .end_2:
+
+        inc ebx
+        jmp .loop_1
 
     .error_count:
     print_str_crlf s_error_count

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 rm -f main.o a.out
 
 nasm -f elf32 -g main.s

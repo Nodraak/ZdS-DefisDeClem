@@ -105,6 +105,45 @@ global _start
 %endmacro
 
 
+; Get a cell of the grid via a block and a cell id
+; Args: block id and cell id
+; Returns value in eax (uses get_cell_at macro)
+%macro get_cell_at_block 2
+    ; div arg
+    ;   edx:eax -> quotient
+    ;   edx -> remainder (modulus)
+
+    ; y = y1 + y2 = (blk/3)*3 + cell/3
+    ; x = x1 + x2 = (blk%3)*3 + cell%3
+    ; compute each [y1, x1, y2, x2] (in this order cause of DIV properties)
+    ; while pushing each result and then pop and add to compute y and x
+
+    ; y1, x1
+    mov edx, 0
+    mov eax, %1
+    mov ecx, 3
+    div ecx
+    imul eax, 3
+    imul edx, 3
+    push eax ; y1
+    push edx ; x1
+
+    ; y2, x2
+    mov edx, 0
+    mov eax, %2
+    mov ecx, 3
+    div ecx ; eax = y2, edx = x2
+
+    pop ebx ; x1
+    pop ecx ; y1
+
+    add eax, ecx ; y = y2 + y1
+    add edx, ecx ; x = x2 + x1
+
+    get_cell_at eax, edx
+%endmacro
+
+
 ;
 ; DATA
 ;
@@ -330,12 +369,13 @@ print_grid:
     POST_FUNC
 
 
-; Returns in eax 1 if the row is valid, 0 otherwise
+; Returns in eax 1 if the (row|column|block) is valid, 0 otherwise
 ; Arg:
-;   A row id
-; For n from 1 to 9, we iterate over the whole row to count the number of
-; occurence of the current n in the row
-grid_check_row:
+;   An static id (ex: a row id)
+;   [0, 1, 2] = [row, columns, block]
+; For check row: for n from 1 to 9, we iterate over the whole row to count the
+; number of occurence of the current n in the row
+grid_check:
     PRE_FUNC
 
     ; [ebp-4] column counter
@@ -356,7 +396,22 @@ grid_check_row:
             cmp DWORD [ebp-4], 9
             jge .end_c
 
-            get_cell_at DWORD [ebp+8], DWORD [ebp-4] ; row id, column id
+            cmp DWORD [ebp+12], 0
+            jne .not_row
+            ; get_cell_at row id, column id
+            get_cell_at DWORD [ebp+8], DWORD [ebp-4] ; use arg1 as row_id
+            jmp .all
+            .not_row:
+            cmp DWORD [ebp+12], 1
+            jne .not_column
+            ; get_cell_at row id, column id
+            get_cell_at DWORD [ebp-4], DWORD [ebp+8] ; use arg1 as column_id
+            jmp .all
+            .not_column:
+            get_cell_at_block [ebp+8], [ebp-4]
+            jmp .all
+
+            .all:
             ; if equal, inc counter
             cmp eax, [ebp-8]
             jne .skip
@@ -384,7 +439,7 @@ grid_is_valid:
     sub esp, 0x4
 
     ;
-    ; check each row
+    ; check each id (used as row id, column id and block id)
     ;
 
     mov DWORD [ebp-4], 0
@@ -392,11 +447,20 @@ grid_is_valid:
         cmp DWORD [ebp-4], 10
         jge .end
 
-        push DWORD [ebp-4]
-        call grid_check_row
-        add esp, 0x4
+        %macro GRID_CHECK 1
+            push %1
+            push DWORD [ebp-4]
+            call grid_check
+            add esp, 0x4
+            ret_if_true eax, 0, je, 0
+        %endmacro
 
-        ret_if_true eax, 0, je, 0
+        ; check row
+        GRID_CHECK 0
+        ; check column
+        GRID_CHECK 1
+        ; check block
+        GRID_CHECK 2
 
         inc DWORD [ebp-4]
         jmp .loop

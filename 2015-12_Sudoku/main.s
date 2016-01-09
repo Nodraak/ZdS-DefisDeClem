@@ -175,6 +175,7 @@ section .rodata
     s_hex           db '0x', 0x0
     s_sep           db '.', 0x0
     s_space         db ' ', 0x0
+    s_solved        db 'Solved \o/', 0x0
 
 
 ; uninitialized variables - RW
@@ -211,11 +212,8 @@ _start:
     call grid_solve
     add esp, 0x4
 
-    call grid_is_valid
-    print_int_dec eax
-    push s_crlf
-    call print_str
-    add esp, 0x4
+    print_int_dec 0
+    print_str_crlf s_space
 
     push 0
     call exit ; does not return
@@ -503,8 +501,80 @@ grid_is_valid:
 grid_solve:
     PRE_FUNC
 
-    ; todo
+    %macro RECURSE 0
+        push DWORD [ebp + 8]
+        inc DWORD [esp]
+        call grid_solve
+        add esp, 0x4
+    %endmacro
 
+    ; [ebp - 4]: counter
+    sub esp, 0x4
+
+    ; if grid is full (ie solved)
+    cmp DWORD [ebp + 8], 81
+    je .solved
+
+; debug print
+    print_str_crlf s_sep
+    print_int_dec DWORD [ebp + 8]
+    print_str_crlf s_space
+    call print_grid
+
+    ; if cell is not 0, it is already filled, just recurse
+    ; else try every number
+    mov eax, [ebp + 8]
+    cmp DWORD [grid + 4*eax], 0
+    jne .recurse
+    je .try
+
+    .recurse:
+    RECURSE
+    jmp .end
+
+    .try:
+    mov DWORD [ebp - 4], 1
+    .loop:
+        cmp DWORD [ebp - 4], 10
+        jge .loop_end
+
+        ; try a number
+        mov eax, [ebp + 8]
+        mov ebx, [ebp - 4]
+        mov [grid + 4*eax], ebx
+
+        ; if grid.is_valid(), recurse
+        call grid_is_valid
+        cmp eax, 1
+        jne .not_valid
+        RECURSE
+        .not_valid:
+
+        inc DWORD [ebp - 4]
+        jmp .loop
+    .loop_end:
+
+    ; restore cell's value before returning (which was 0)
+    mov eax, [ebp + 8]
+    mov DWORD [grid + 4*eax], 0
+
+    jmp .end
+
+    .solved:
+    print_str_crlf s_solved
+    call print_grid
+
+    call grid_is_valid
+    print_int_dec eax
+    push s_crlf
+    call print_str
+    add esp, 0x4
+
+    push 0
+    call exit
+    jmp .end
+
+    .end:
     POST_FUNC
 
 

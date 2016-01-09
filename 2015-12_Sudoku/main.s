@@ -22,6 +22,14 @@ bits 32
 
 global _start
 
+;
+; DEFINES
+;
+
+%define CHECK_ROW 0
+%define CHECK_COLUMNS 1
+%define CHECK_BLOCK 2
+
 
 ;
 ; MACROS
@@ -163,6 +171,7 @@ section .rodata
     s_arg           db ' arguments:', 0x0
     s_crlf          db 0xD, 0xA, 0x0
     s_error_count   db 'Error, expected 10 args', 0x0
+    se_grid_check_args db 'Error, unexpected argument', 0x0
     s_hex           db '0x', 0x0
     s_sep           db '.', 0x0
     s_space         db ' ', 0x0
@@ -191,8 +200,18 @@ _start:
     call print_args
     call parse_argv
     call print_grid
-    call grid_is_valid
 
+    call grid_is_valid
+    print_int_dec eax
+    push s_crlf
+    call print_str
+    add esp, 0x4
+
+    push 0
+    call grid_solve
+    add esp, 0x4
+
+    call grid_is_valid
     print_int_dec eax
     push s_crlf
     call print_str
@@ -396,18 +415,23 @@ grid_check:
             cmp DWORD [ebp-4], 9
             jge .end_c
 
-            cmp DWORD [ebp+12], 0
-            jne .not_row
+            cmp DWORD [ebp+12], CHECK_ROW
+            je .check_row
+            cmp DWORD [ebp+12], CHECK_COLUMNS
+            je .check_column
+            cmp DWORD [ebp+12], CHECK_BLOCK
+            je .check_block
+            jmp .error
+
+            .check_row:
             ; get_cell_at row id, column id
             get_cell_at DWORD [ebp+8], DWORD [ebp-4] ; use arg1 as row_id
             jmp .all
-            .not_row:
-            cmp DWORD [ebp+12], 1
-            jne .not_column
+            .check_column:
             ; get_cell_at row id, column id
             get_cell_at DWORD [ebp-4], DWORD [ebp+8] ; use arg1 as column_id
             jmp .all
-            .not_column:
+            .check_block:
             get_cell_at_block [ebp+8], [ebp-4]
             jmp .all
 
@@ -421,13 +445,20 @@ grid_check:
             inc DWORD [ebp-4]
             jmp .loop_c
         .end_c:
+        ; check row
 
         ret_if_true DWORD [ebp-12], 2, jge, 0
 
         inc DWORD [ebp-8]
         jmp .loop_n
     .end_n:
+    jmp .end
 
+    .error:
+    print_str_crlf se_grid_check_args
+    jmp .end
+
+    .end:
     POST_FUNC 1
 
 
@@ -455,18 +486,26 @@ grid_is_valid:
             ret_if_true eax, 0, je, 0
         %endmacro
 
-        ; check row
-        GRID_CHECK 0
-        ; check column
-        GRID_CHECK 1
-        ; check block
-        GRID_CHECK 2
+        GRID_CHECK CHECK_ROW
+        GRID_CHECK CHECK_COLUMNS
+        GRID_CHECK CHECK_BLOCK
 
         inc DWORD [ebp-4]
         jmp .loop
     .end:
 
     POST_FUNC 1
+
+
+; main recursive function that solve the grid
+; Arg:
+;   an id from 0 to 80 indicating the current cell to fill
+grid_solve:
+    PRE_FUNC
+
+    ; todo
+
+    POST_FUNC
 
 
 ; Prints a string to stdout

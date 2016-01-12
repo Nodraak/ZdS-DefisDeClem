@@ -120,35 +120,66 @@ global _start
     ; div arg
     ;   edx:eax -> quotient
     ;   edx -> remainder (modulus)
+    ; mul arg
+    ;   edx:eax -> result (eax*arg)
 
     ; y = y1 + y2 = (blk/3)*3 + cell/3
     ; x = x1 + x2 = (blk%3)*3 + cell%3
-    ; compute each [y1, x1, y2, x2] (in this order cause of DIV properties)
+    ; compute each [y1, x1, y2, x2] (in this order because of DIV properties)
     ; while pushing each result and then pop and add to compute y and x
 
-    ; y1, x1
+
+    ; esp+12    y1
+    ; esp+8     y2
+    ; esp+4     x1
+    ; esp       x2
+    sub esp, 0x16
+
+    ; y1/3, x1/3
     mov edx, 0
     mov eax, %1
     mov ecx, 3
     div ecx
-    imul eax, 3
-    imul edx, 3
-    push eax ; y1
-    push edx ; x1
+    mov [esp + 12], eax ; y1
+    mov [esp + 4], edx ; x1
+
+    ; y1
+    mov edx, 0
+    mov eax, [esp + 12]
+    mov ebx, 3
+    mul ebx
+    mov [esp + 12], eax
+
+    ; x1
+    mov edx, 0
+    mov eax, [esp + 4]
+    mov ebx, 3
+    mul ebx
+    mov [esp + 4], eax
 
     ; y2, x2
     mov edx, 0
     mov eax, %2
     mov ecx, 3
-    div ecx ; eax = y2, edx = x2
+    div ecx
+    mov [esp + 8], eax ; y2
+    mov [esp], edx ; x2
 
-    pop ebx ; x1
-    pop ecx ; y1
+    ; eax = x1 + x2
+    pop eax
+    pop ebx
+    add eax, ebx
 
-    add eax, ecx ; y = y2 + y1
-    add edx, ecx ; x = x2 + x1
+    ; ebx = y1 + y2
+    pop ebx
+    pop ecx
+    add ebx, ecx
 
-    get_cell_at eax, edx
+    ; [esp] = y [esp+4] = x
+    push eax
+    push ebx
+    get_cell_at DWORD [esp], DWORD [esp+4]
+    add esp, 0x8
 %endmacro
 
 
@@ -388,7 +419,7 @@ print_grid:
 
 ; Returns in eax 1 if the (row|column|block) is valid, 0 otherwise
 ; Arg:
-;   An static id (ex: a row id)
+;   A static id (ex: a row id)
 ;   [0, 1, 2] = [row, columns, block]
 ; For check row: for n from 1 to 9, we iterate over the whole row to count the
 ; number of occurence of the current n in the row
@@ -443,7 +474,6 @@ grid_check:
             inc DWORD [ebp-4]
             jmp .loop_c
         .end_c:
-        ; check row
 
         ret_if_true DWORD [ebp-12], 2, jge, 0
 

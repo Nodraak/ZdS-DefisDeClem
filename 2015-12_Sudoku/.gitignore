@@ -1,2 +1,4 @@
 main.o
-a.out
+a.s.out
+a.c.out
+trace_tests/

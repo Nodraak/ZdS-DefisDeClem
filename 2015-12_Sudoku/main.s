@@ -37,6 +37,7 @@ global _start
 ;
 
 %macro PRE_FUNC 0
+    ; todo enter ?
     push ebp
     mov ebp, esp
 %endmacro

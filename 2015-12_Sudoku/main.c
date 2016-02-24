@@ -147,6 +147,7 @@ void grille_fill_one(cell **grille, int current)
         }
         else
         {
+            printf("Grid has no solution :(\n");
             grille_print(grille);
             return;
         }

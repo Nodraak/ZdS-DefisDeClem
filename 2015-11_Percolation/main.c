@@ -39,7 +39,7 @@ void board_burn(e_cell board[BOARD_HEIGHT][BOARD_WIDTH], int j, int i)
         if (board[j][i] == CELL_TREE)
         {
             if (rand() < PROBA*RAND_MAX)
-            board[j][i] = CELL_FIRE;
+                board[j][i] = CELL_FIRE;
         }
     }
 }
@@ -89,7 +89,7 @@ void board_print_stats(e_cell board[BOARD_HEIGHT][BOARD_WIDTH])
 
     for (i = 0; i < CELL_LAST; ++i)
         printf("\t%-5s %d\n", labels[i], stats[i]);
-    printf("\t->    %d\n", 100*stats[CELL_ASHES]/(stats[CELL_TREE]+stats[CELL_ASHES]));
+    printf("\t-> Burned at %d%%\n", 100*stats[CELL_ASHES]/(stats[CELL_TREE]+stats[CELL_ASHES]));
 }
 
 int main(void)
@@ -104,8 +104,8 @@ int main(void)
     /* main loop */
     while (!board_is_simulaton_finished(board))
     {
-        printf("\n%d\n", step);
         board_simulate(board);
+        printf("\n%d\n", step);
         board_print_stats(board);
         step ++;
     }

@@ -158,8 +158,6 @@ void grille_fill_one(cell **grille, int current)
     }
     else
     {
-        saved = grille[cur_y][cur_x];
-
         for (i = 1; i <= 9; ++i)
         {
             grille[cur_y][cur_x] = i;
@@ -167,7 +165,7 @@ void grille_fill_one(cell **grille, int current)
                 grille_fill_one(grille, current+1);
         }
 
-        grille[cur_y][cur_x] = saved;
+        grille[cur_y][cur_x] = 0;
     }
 }
 

@@ -11,7 +11,7 @@ from __future__ import print_function
 import copy
 import subprocess
 
-AOUT = './a.out'
+SOLVER_ASM = True  # set to false to use C solver
 VALID = '1'
 NONVALID = '0'
 GRID = [
@@ -26,11 +26,35 @@ GRID = [
     '912345678',
 ]
 
-#print(' '.join(GRID))
+GRID2 = [
+    '127943568',
+    '369218745',
+    '.........',
+    '..64..8..',
+    '.....7..9',
+    '..485.3..',
+    '...12....',
+    '2.......4',
+    '.53......',
+]
+
+if SOLVER_ASM:
+    AOUT = './a.s.out'
+else:
+    AOUT = './a.c.out'
+
+print('CMD:')
+print(' '.join(GRID))
+print(' '.join(GRID2))
+print('')
+#exit(0)
 
 
 def make_cmd(grid):
-    return [AOUT] + grid
+    if SOLVER_ASM:
+        return [AOUT] + grid
+    else:
+        return [AOUT] + [''.join(grid)]
 
 
 def replace_char(s, char, index):
@@ -38,32 +62,39 @@ def replace_char(s, char, index):
 
 
 def parse_output(out):
-    return out.split('\n')[-2].strip()
+    if SOLVER_ASM:
+        return out.split('\n')[-2].strip()
+    else:
+        return out.split('\n')[-2].strip()[3]
 
 
 def result(e, a):
     if e == a:
         return 'success'
     else:
-        return 'FAILED'
+        return 'FAILED ("%s" != "%s")' % (e, a)
 
 
-def test(expected, changes=None, verbose=False):
+def test(expected, changes=None, verbose=False, grid=None):
     if changes == None:
         changes = []
+    grid = copy.copy(grid if grid != None else GRID)
 
-    grid = copy.copy(GRID)
     for y, x, val in changes:
         grid[y] = replace_char(grid[y], val, x)
 
-    raw_out = subprocess.check_output(make_cmd(grid))
+    try:
+        raw_out = subprocess.check_output(make_cmd(grid))
+    except subprocess.CalledProcessError as e:
+        print(e.output)
+        exit(1)
 
     if verbose:
-        print('==> Grid:')
+        print('===== Grid =====')
         print('\n'.join(grid))
-        print('==> Prog out:')
+        print('===== Prog out =====')
         print(raw_out)
-        print('==>', end=' ')
+        print('====>', end=' ')
 
     out = parse_output(raw_out)
     print('%s %s %s' % (expected, out, result(expected, out)))
@@ -71,7 +102,8 @@ def test(expected, changes=None, verbose=False):
 
 print('Expected Actual Conclusion')
 test(VALID)
+test(VALID, [(0, 0, '.')])
 test(NONVALID, [(0, 0, '2')])
 test(NONVALID, [(1, 1, '4')])
 test(NONVALID, [(2, 2, '2')])
-
+test(NONVALID, grid=GRID2)
